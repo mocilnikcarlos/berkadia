@@ -105,13 +105,22 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
 
   // Muestra el toolbar al seleccionar texto
   useEffect(() => {
-    const handleSelection = () => {
+    const handleSelection = (e: MouseEvent | KeyboardEvent) => {
       const selection = window.getSelection();
       const text = selection?.toString().trim();
+
       if (!text) {
         setShowToolbar(false);
         return;
       }
+
+      // 🚫 Evitar tooltip si se selecciona dentro del título
+      const target = (e.target as HTMLElement) || document.activeElement;
+      if (target && target.closest("#note-title")) {
+        setShowToolbar(false);
+        return;
+      }
+
       const range = selection!.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       setToolbarPos({ x: rect.left + rect.width / 2, y: rect.top - 10 });

@@ -86,8 +86,8 @@ export default function RichTextBlock({
 
     const rect = ref.current.getBoundingClientRect();
     setTooltip({
-      x: rect.left + 60,
-      y: rect.top - 35,
+      x: rect.left + 50,
+      y: rect.top - 24,
       text: ref.current.innerText.trim(),
     });
   };
@@ -127,21 +127,40 @@ export default function RichTextBlock({
   };
 
   return (
-    <div
-      data-text-block
-      data-block-id={id}
-      ref={ref}
-      contentEditable
-      suppressContentEditableWarning
-      onInput={handleInput}
-      onKeyDown={handleKeyDown}
-      onFocus={() => setFocused(true)}
-      onBlur={handleBlur}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseEnter={handleMouseEnter}
-      onPaste={handlePaste}
-      className={`rich-block ${isPlaceholder ? "placeholder" : ""}`}
-    />
+    <div className="relative w-full">
+      <div
+        data-text-block
+        data-block-id={id}
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        onInput={handleInput}
+        onKeyDown={handleKeyDown}
+        onFocus={() => setFocused(true)}
+        onBlur={handleBlur}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseEnter={handleMouseEnter}
+        onPaste={handlePaste}
+        className={`
+        rich-block 
+        w-full min-h-[2.5rem]
+        px-4 py-3 rounded-2xl
+        text-[15px] leading-relaxed
+        outline-none transition-all duration-150
+        bg-[var(--heroui-background)] hover:bg-[rgba(255,255,255,0.02)]
+      `}
+        style={{
+          cursor: "text",
+        }}
+      />
+
+      {/* Placeholder solo visible cuando el bloque está vacío */}
+      {isPlaceholder && (
+        <span className="absolute top-3 left-4 text-gray-500 select-none pointer-events-none">
+          + Escribí algo...
+        </span>
+      )}
+    </div>
   );
 }
