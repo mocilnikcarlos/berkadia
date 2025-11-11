@@ -1,13 +1,28 @@
+"use client";
+import { useState } from "react";
 import { Note } from "@/hooks/useNotes";
-import { Card, CardBody, Spinner, Button } from "@heroui/react";
+import { Spinner, Button, useDisclosure } from "@heroui/react";
+import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 
 interface Props {
   notes: Note[];
   loading: boolean;
-  onDelete: (id: number) => Promise<void>;
+  onDelete: (id: string | number) => Promise<void>;
 }
 
 export function NotesList({ notes, loading, onDelete }: Props) {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [noteToDelete, setNoteToDelete] = useState<string | number | null>(
+    null
+  );
+
+  const handleDelete = async () => {
+    if (!noteToDelete) return;
+    await onDelete(noteToDelete);
+    setNoteToDelete(null);
+    onClose();
+  };
+
   if (loading)
     return (
       <div className="flex justify-center py-10">
@@ -23,14 +38,20 @@ export function NotesList({ notes, loading, onDelete }: Props) {
     );
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {notes.map((note) => (
-        <Card
-          key={note.id}
-          className="hover:scale-[1.01] transition-all cursor-pointer"
-          onClick={() => (window.location.href = `/dashboard/${note.id}`)}
-        >
-          <CardBody className="flex flex-col gap-2 py-4 px-5">
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {notes.map((note) => (
+          <div
+            key={note.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => (window.location.href = `/dashboard/${note.id}`)}
+            className="
+              rounded-xl bg-content2 border border-default-100 shadow-sm
+              hover:shadow-md hover:scale-[1.01]
+              transition-all cursor-pointer p-5
+            "
+          >
             <div className="flex justify-between items-start">
               <h3 className="text-base font-semibold">
                 {note.title || "Sin título"}
@@ -41,7 +62,8 @@ export function NotesList({ notes, loading, onDelete }: Props) {
                 variant="light"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (confirm("¿Eliminar esta nota?")) onDelete(note.id);
+                  setNoteToDelete(note.id);
+                  onOpen();
                 }}
               >
                 🗑️
@@ -51,9 +73,15 @@ export function NotesList({ notes, loading, onDelete }: Props) {
             <small className="text-default-500 text-xs">
               {note.created_at.split("T")[0]}
             </small>
-          </CardBody>
-        </Card>
-      ))}
-    </div>
+          </div>
+        ))}
+      </div>
+
+      <ConfirmDeleteModal
+        isOpen={isOpen}
+        onClose={onClose}
+        onConfirm={handleDelete}
+      />
+    </>
   );
 }

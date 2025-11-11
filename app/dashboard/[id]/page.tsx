@@ -18,14 +18,20 @@ export default function NotePage({
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const { note, saving, tooltip, setTooltip, handleSave, handleCopy } = useNote(
-    supabase,
-    id
-  );
+  const {
+    note,
+    saving,
+    tooltip,
+    setTooltip,
+    handleSave,
+    handleCopy,
+    handleSaveTitle,
+  } = useNote(supabase, id);
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [title, setTitle] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  const saveTitleTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // ───── Al cargar la nota ─────
   useEffect(() => {
@@ -51,6 +57,16 @@ export default function NotePage({
       </div>
     );
 
+  const handleTitleChange = (value: string) => {
+    setTitle(value); // instantáneo
+    if (saveTitleTimeout.current) clearTimeout(saveTitleTimeout.current);
+
+    saveTitleTimeout.current = setTimeout(async () => {
+      if (!note) return;
+      await supabase.from("notes").update({ title: value }).eq("id", note.id);
+    }, 800);
+  };
+
   return (
     <main
       ref={containerRef}
@@ -72,10 +88,11 @@ export default function NotePage({
         <div className="relative">
           {editingTitle ? (
             <input
-              id="note-title"
+              type="text"
               value={title}
+              id="note-title"
               placeholder="Título de la nota"
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => handleTitleChange(e.target.value)}
               onBlur={() => {
                 setEditingTitle(false);
                 if (!title.trim()) setTitle("Nueva nota");

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 
 export interface Note {
-  id: number;
+  id: string | number;
   title: string;
   created_at: string;
 }
@@ -17,28 +17,31 @@ export function useNotes() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState("");
 
   // 🔹 Obtener usuario y notas
   useEffect(() => {
     const getUserAndNotes = async () => {
-      const { data } = await supabase.auth.getUser();
-      const user = data?.user;
-      setUserEmail(user?.email ?? null);
+      try {
+        // ⚡ usa sesión local (instantáneo)
+        const { data: sessionData } = await supabase.auth.getSession();
+        const user = sessionData.session?.user;
+        setUserEmail(user?.email ?? null);
 
-      if (user) {
-        const { data: notesData, error } = await supabase
-          .from("notes")
-          .select("id, title, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
+        if (user) {
+          const { data: notesData, error } = await supabase
+            .from("notes")
+            .select("id, title, created_at")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false });
 
-        if (error) console.error("Error fetching notes:", error);
-        else setNotes(notesData || []);
+          if (error) console.error("Error fetching notes:", error);
+          else setNotes(notesData || []);
+        }
+      } catch (err) {
+        console.error("Error inesperado:", err);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     getUserAndNotes();
@@ -52,20 +55,22 @@ export function useNotes() {
         "postgres_changes",
         { event: "*", schema: "public", table: "notes" },
         (payload) => {
-          if (payload.eventType === "INSERT") {
-            setNotes((prev) => {
-              const exists = prev.some((n) => n.id === payload.new.id);
-              return exists ? prev : [payload.new as Note, ...prev];
-            });
-          } else if (payload.eventType === "DELETE") {
-            setNotes((prev) => prev.filter((n) => n.id !== payload.old.id));
-          } else if (payload.eventType === "UPDATE") {
-            setNotes((prev) =>
-              prev.map((n) =>
-                n.id === payload.new.id ? (payload.new as Note) : n
-              )
-            );
-          }
+          setNotes((prev) => {
+            switch (payload.eventType) {
+              case "INSERT":
+                return prev.some((n) => n.id === payload.new.id)
+                  ? prev
+                  : [payload.new as Note, ...prev];
+              case "DELETE":
+                return prev.filter((n) => n.id !== payload.old.id);
+              case "UPDATE":
+                return prev.map((n) =>
+                  n.id === payload.new.id ? (payload.new as Note) : n
+                );
+              default:
+                return prev;
+            }
+          });
         }
       )
       .subscribe();
@@ -76,27 +81,34 @@ export function useNotes() {
   }, [supabase]);
 
   // 🔹 Acciones
-  const addNote = async (title: string) => {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id;
-    if (!userId) return null;
+const addNote = async (title: string) => {
+  const tempId = crypto.randomUUID();
 
-    const { data, error } = await supabase
-      .from("notes")
-      .insert([{ title, user_id: userId }])
-      .select()
-      .single(); // 🔹 devuelve la nota recién creada
+  // Inserción optimista local
+  setNotes((prev: Note[]) => [
+    { id: tempId, title, created_at: new Date().toISOString() },
+    ...prev,
+  ]);
 
-    if (error) {
-      console.error("Error inserting note:", error);
-      return null;
-    }
+  // Inserción real en Supabase (en segundo plano)
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+  if (!userId) return null;
 
-    // 🔹 actualiza el estado local sin duplicar
-    setNotes((prev) => prev); // 🔹 No alteramos la lista aún
-    return data;
+  const { error } = await supabase
+    .from("notes")
+    .insert([{ id: tempId, title, user_id: userId }]);
 
-  };
+  if (error) {
+    console.error("Error creando nota:", error);
+    // Si falla, quitamos la nota optimista
+    setNotes((prev) => prev.filter((n) => n.id !== tempId));
+    return null;
+  }
+
+  return { id: tempId, title }; // devolvemos el ID para redirigir
+};
+
 
   const updateNote = async (id: number, newTitle: string) => {
     const { error } = await supabase
@@ -105,16 +117,13 @@ export function useNotes() {
       .eq("id", id);
 
     if (error) console.error("Error updating note:", error);
-    else {
-      setEditingId(null);
-      setEditValue("");
-    }
   };
 
-  const deleteNote = async (id: number) => {
+  const deleteNote = async (id: string | number) => {
     const { error } = await supabase.from("notes").delete().eq("id", id);
     if (error) console.error("Error deleting note:", error);
   };
+
 
   const logout = async () => {
     await supabase.auth.signOut();
@@ -125,10 +134,6 @@ export function useNotes() {
     userEmail,
     notes,
     loading,
-    editingId,
-    editValue,
-    setEditValue,
-    setEditingId,
     addNote,
     updateNote,
     deleteNote,

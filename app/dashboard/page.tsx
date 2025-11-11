@@ -16,7 +16,9 @@ export default function DashboardPage() {
 
   const handleCreateNote = async () => {
     const newNote = await addNote("Nueva nota");
-    if (newNote?.id) router.push(`/dashboard/${newNote.id}`);
+    if (newNote?.id) {
+      router.push(`/dashboard/${newNote.id}`);
+    }
   };
 
   return (
