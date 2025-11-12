@@ -141,36 +141,24 @@ function handleLinePatterns(e: React.KeyboardEvent, block: HTMLDivElement) {
 function handleQuoteEnter(e: React.KeyboardEvent) {
   if (e.key !== "Enter" || e.shiftKey) return false;
 
-  const selection = window.getSelection();
-  if (!selection?.anchorNode) return false;
+  const sel = window.getSelection();
+  if (!sel?.rangeCount) return false;
+  const range = sel.getRangeAt(0);
 
   const element =
-    selection.anchorNode.nodeType === Node.TEXT_NODE
-      ? selection.anchorNode.parentElement
-      : (selection.anchorNode as HTMLElement);
+    sel.anchorNode?.nodeType === Node.TEXT_NODE
+      ? sel.anchorNode.parentElement
+      : (sel.anchorNode as HTMLElement);
 
   const quote = element?.closest("blockquote");
   if (!quote) return false;
 
-  const range = selection.getRangeAt(0);
-  const text = quote.textContent?.replace(/\u200B/g, "").trim() || "";
-  const isEmpty = text === "";
-
-  // --- Detectar posición del caret ---
-  const atStart =
-    range.collapsed &&
-    range.startContainer === quote.firstChild &&
-    range.startOffset === 0;
-
-  const atEnd =
-    range.collapsed &&
-    range.startContainer === quote.lastChild &&
-    range.startOffset ===
-      (quote.lastChild?.textContent?.length ?? 0);
-
   e.preventDefault();
 
-  // --- Caso 1: Quote vacío → eliminar y crear párrafo ---
+  const content = quote.innerText.replace(/\u200B/g, "").trim();
+  const isEmpty = content === "";
+
+  // 1️⃣ Si está vacío: eliminar quote y crear párrafo
   if (isEmpty) {
     const p = document.createElement("p");
     p.innerHTML = "<br>";
@@ -180,25 +168,34 @@ function handleQuoteEnter(e: React.KeyboardEvent) {
     return true;
   }
 
-  // --- Caso 2: Caret al inicio → crear párrafo arriba ---
+  // 2️⃣ Detectar inicio y fin REALES del rango
+  const preRange = document.createRange();
+  preRange.selectNodeContents(quote);
+  preRange.setEnd(range.startContainer, range.startOffset);
+  const atStart = preRange.toString().replace(/\u200B/g, "").trim() === "";
+
+  const postRange = document.createRange();
+  postRange.selectNodeContents(quote);
+  postRange.setStart(range.endContainer, range.endOffset);
+  const atEnd = postRange.toString().replace(/\u200B/g, "").trim() === "";
+
+  // 3️⃣ Crear nuevo párrafo en la posición adecuada
+  const p = document.createElement("p");
+  p.innerHTML = "<br>";
+
   if (atStart) {
-    const p = document.createElement("p");
-    p.innerHTML = "<br>";
     quote.parentNode?.insertBefore(p, quote);
     focusNode(p);
     return true;
   }
 
-  // --- Caso 3: Caret al final → crear párrafo abajo ---
   if (atEnd) {
-    const p = document.createElement("p");
-    p.innerHTML = "<br>";
     quote.parentNode?.insertBefore(p, quote.nextSibling);
     focusNode(p);
     return true;
   }
 
-  // --- Caso 4: En medio del quote → comportamiento normal ---
+  // 4️⃣ En medio del quote → comportamiento normal (Shift+Enter maneja salto)
   return false;
 }
 
