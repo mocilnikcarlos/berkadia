@@ -138,6 +138,53 @@ function handleLinePatterns(e: React.KeyboardEvent, block: HTMLDivElement) {
   return true;
 }
 
+function handleQuoteEnter(e: React.KeyboardEvent) {
+  if (e.key !== "Enter") return false;
+
+  const selection = window.getSelection();
+  if (!selection?.anchorNode) return false;
+
+  const element =
+    selection.anchorNode.nodeType === Node.TEXT_NODE
+      ? selection.anchorNode.parentElement
+      : (selection.anchorNode as HTMLElement);
+
+  const quote = element?.closest("blockquote");
+  if (!quote) return false;
+
+  const range = selection.getRangeAt(0);
+  const isEmpty = quote.textContent?.trim() === "";
+  const atEnd =
+    range.collapsed &&
+    range.startContainer === quote.lastChild &&
+    range.startOffset ===
+      (quote.lastChild?.textContent?.length ?? 0);
+
+  // Si el bloque está vacío o el cursor está al final, salimos
+  if (isEmpty || atEnd) {
+    e.preventDefault();
+
+    const p = document.createElement("p");
+    p.innerHTML = "<br>";
+
+    // Insertar el nuevo párrafo después del quote
+    quote.parentNode?.insertBefore(p, quote.nextSibling);
+
+    // Mover el cursor al nuevo párrafo
+    const r = document.createRange();
+    r.selectNodeContents(p);
+    r.collapse(true);
+
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(r);
+    p.focus();
+
+    return true;
+  }
+
+  return false;
+}
 
 // --- hook principal ---
 export function useRichTextHotkeys(ref: React.RefObject<HTMLDivElement | null>) {
@@ -150,6 +197,7 @@ export function useRichTextHotkeys(ref: React.RefObject<HTMLDivElement | null>) 
       if (handleListBackspace(e)) return;
       if (handleListEnter(e)) return;
       if (handleLinePatterns(e, block)) return;
+      if (handleQuoteEnter(e)) return;
     },
     [ref]
   );
