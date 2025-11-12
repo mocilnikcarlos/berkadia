@@ -96,9 +96,31 @@ export default function TextBlock({
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     e.preventDefault();
 
-    const text = e.clipboardData.getData("text/plain");
-    if (!text) return;
+    const items = Array.from(e.clipboardData.items);
 
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (!file) return;
+
+        const url = URL.createObjectURL(file);
+
+        // Limpiar el bloque actual (lo convertimos en vacío)
+        onChange(block.id, { html: "" });
+
+        // Enviamos evento global a NoteEditor para insertar bloque imagen
+        window.dispatchEvent(
+          new CustomEvent("insert-image-block", {
+            detail: { file, url, afterId: block.id },
+          })
+        );
+
+        return; // 🚀 listo, no seguimos procesando texto
+      }
+    }
+
+    // 2️⃣ Si NO había imagen → pegado de texto normal
+    const text = e.clipboardData.getData("text/plain") || "";
     const el = ref.current;
     if (!el) return;
 
@@ -106,13 +128,12 @@ export default function TextBlock({
     if (!selection || selection.rangeCount === 0) return;
 
     const range = selection.getRangeAt(0);
-
-    el.classList.remove("placeholder");
-
     range.deleteContents();
+
     const textNode = document.createTextNode(text);
     range.insertNode(textNode);
 
+    // mover cursor al final
     range.setStartAfter(textNode);
     range.setEndAfter(textNode);
     selection.removeAllRanges();
@@ -136,17 +157,24 @@ export default function TextBlock({
       onMouseUp={handleMouseUp}
       onMouseEnter={handleMouseEnter}
       onPaste={handlePaste}
-      className={`
-        rich-block 
-        w-full min-h-[2.5rem]
-        px-4 py-3 rounded-2xl
-        text-[15px] leading-relaxed
-        outline-none transition-all duration-150
-        bg-[var(--heroui-background)] hover:bg-[rgba(255,255,255,0.02)]
-      `}
-      style={{
-        cursor: "text",
+      onDrop={(e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files?.[0];
+        if (!file || !file.type.startsWith("image/")) return;
+
+        const url = URL.createObjectURL(file);
+
+        window.dispatchEvent(
+          new CustomEvent("insert-image-block", {
+            detail: { file, url, afterId: block.id },
+          })
+        );
       }}
+      onDragOver={(e) => e.preventDefault()}
+      className={
+        "rich-block w-full min-h-[2.5rem] px-4 py-3 rounded-2xl text-[15px] leading-relaxed outline-none transition-all duration-150 bg-[var(--heroui-background)] hover:bg-[rgba(255,255,255,0.02)] "
+      }
+      style={{ cursor: "text" }}
     />
   );
 }

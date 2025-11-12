@@ -5,6 +5,7 @@ import type { Block } from "@/types/blocks";
 import type { TooltipData } from "@/hooks/useNote";
 import BlockWrapper from "./BlockWrapper";
 import TextBlock from "../TextBlock";
+import ImageBlock from "./ImageBlock";
 
 interface BlockRendererProps {
   block: Block;
@@ -42,9 +43,7 @@ export default function BlockRenderer({
     case "image":
       return (
         <BlockWrapper id={block.id}>
-          <div className="px-4 py-3 rounded-2xl bg-[var(--heroui-background)] text-sm text-gray-400">
-            Bloque de imagen (pendiente de implementar)
-          </div>
+          <ImageBlock block={block} onChange={onChange} onDelete={onDelete} />
         </BlockWrapper>
       );
 

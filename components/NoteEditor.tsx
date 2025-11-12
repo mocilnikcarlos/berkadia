@@ -195,6 +195,35 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
     };
   }, []);
 
+  useEffect(() => {
+    const handler = (e: any) => {
+      const { file, url, afterId } = e.detail;
+
+      setBlocks((prev) => {
+        const idx = prev.findIndex((b) => b.id === afterId);
+        if (idx === -1) return prev;
+
+        const newBlock: Block = {
+          id: crypto.randomUUID(),
+          type: "image",
+          data: { url, alt: file.name, caption: "" },
+        };
+
+        const updated = [
+          ...prev.slice(0, idx + 1),
+          newBlock,
+          ...prev.slice(idx + 1),
+        ];
+
+        persist(updated);
+        return updated;
+      });
+    };
+
+    window.addEventListener("insert-image-block", handler);
+    return () => window.removeEventListener("insert-image-block", handler);
+  }, []);
+
   return (
     <div className="note-editor">
       {blocks.map((block, index) => {
