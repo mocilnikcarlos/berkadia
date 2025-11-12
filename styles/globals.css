@@ -71,3 +71,20 @@ blockquote {
     color: var(--primary);
     font-weight: 600;
 }
+
+/* ───── 💬 Soporte visual para saltos dentro de quote ───── */
+.note-editor blockquote {
+    line-height: 1.6;
+    /* mejora legibilidad */
+    white-space: pre-wrap;
+    /* respeta los <br> y espacios */
+    min-height: 1.2em;
+    /* asegura altura mínima */
+}
+
+/* cada <br> dentro del quote tiene altura real */
+.note-editor blockquote br {
+    display: inline-block;
+    height: 0.6em;
+    content: "";
+}

@@ -139,7 +139,7 @@ function handleLinePatterns(e: React.KeyboardEvent, block: HTMLDivElement) {
 }
 
 function handleQuoteEnter(e: React.KeyboardEvent) {
-  if (e.key !== "Enter") return false;
+  if (e.key !== "Enter" || e.shiftKey) return false;
 
   const selection = window.getSelection();
   if (!selection?.anchorNode) return false;
@@ -186,6 +186,50 @@ function handleQuoteEnter(e: React.KeyboardEvent) {
   return false;
 }
 
+function handleQuoteShiftEnter(e: React.KeyboardEvent) {
+  if (e.key !== "Enter" || !e.shiftKey) return false;
+
+  const sel = window.getSelection();
+  if (!sel?.rangeCount) return false;
+
+  const range = sel.getRangeAt(0);
+  const element =
+    sel.anchorNode?.nodeType === Node.TEXT_NODE
+      ? sel.anchorNode.parentElement
+      : (sel.anchorNode as HTMLElement);
+
+  const quote = element?.closest("blockquote");
+  if (!quote) return false;
+
+  e.preventDefault();
+
+  // Crear un salto limpio dentro del quote
+  const br = document.createElement("br");
+  const marker = document.createTextNode("\u200B"); // invisible marker
+
+  // Si el caret está fuera del quote, lo forzamos dentro
+  if (!quote.contains(range.startContainer)) {
+    quote.appendChild(br);
+    quote.appendChild(marker);
+  } else {
+    range.insertNode(br);
+    range.collapse(false);
+    range.insertNode(marker);
+  }
+
+  // Recolocar el cursor después del marker
+  const newRange = document.createRange();
+  newRange.setStartAfter(marker);
+  newRange.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(newRange);
+
+  // Asegurar que el caret quede dentro del quote, no en un bloque nuevo
+  quote.normalize();
+  return true;
+}
+
+
 // --- hook principal ---
 export function useRichTextHotkeys(ref: React.RefObject<HTMLDivElement | null>) {
   const handleKeyDown = useCallback(
@@ -197,6 +241,7 @@ export function useRichTextHotkeys(ref: React.RefObject<HTMLDivElement | null>) 
       if (handleListBackspace(e)) return;
       if (handleListEnter(e)) return;
       if (handleLinePatterns(e, block)) return;
+      if (handleQuoteShiftEnter(e)) return;
       if (handleQuoteEnter(e)) return;
     },
     [ref]
