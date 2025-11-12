@@ -1,8 +1,11 @@
+// /components/block/NoteEditor.tsx
 "use client";
+
 import { useState, useEffect } from "react";
 import type { NoteRow, TooltipData } from "@/hooks/useNote";
-import RichTextBlock from "./RichTextBlock";
 import FloatingToolbar from "./FloatingToolbar";
+import BlockRenderer from "./block/BlockRenderer";
+import type { Block } from "@/types/blocks";
 
 interface Props {
   note: NoteRow;
@@ -10,66 +13,119 @@ interface Props {
   setTooltip: (t: TooltipData | null) => void;
 }
 
-interface Block {
-  id: string;
-  html: string;
-}
-
-// Crear nuevo bloque (usa html como base)
-const createBlock = (html = ""): Block => ({
+// 🔨 Crea un bloque de texto vacío
+const createEmptyTextBlock = (): Block => ({
   id: crypto.randomUUID(),
-  html,
+  type: "text",
+  data: { html: "" },
 });
+
+// 🧠 Intenta inicializar bloques a partir del contenido de la nota
+const getInitialBlocksFromNote = (note: NoteRow): Block[] => {
+  const raw = note.content?.trim();
+
+  // Nota vacía
+  if (!raw || raw === "" || raw === "EMPTY") {
+    return [createEmptyTextBlock()];
+  }
+
+  // 1️⃣ Intentar parsear como JSON de bloques (nuevo formato)
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      const blocks = parsed as Block[];
+
+      if (blocks.length === 0) return [createEmptyTextBlock()];
+
+      // asegurar que haya un bloque vacío al final si el último tiene contenido
+      const last = blocks[blocks.length - 1];
+      if (
+        last.type === "text" &&
+        typeof (last.data as any).html === "string" &&
+        (last.data as any).html.trim() === ""
+      ) {
+        return blocks;
+      }
+
+      return [...blocks, createEmptyTextBlock()];
+    }
+  } catch {
+    // 2️⃣ Si no es JSON, asumimos contenido de texto viejo → lo migramos
+  }
+
+  // 📜 Compatibilidad: contenido viejo como string plano separado por dobles saltos
+  const parts = raw
+    .split(/\n\s*\n/)
+    .map((t) => t.trim())
+    .filter((t) => t !== "");
+
+  const blocksFromText: Block[] = parts.map((html) => ({
+    id: crypto.randomUUID(),
+    type: "text",
+    data: { html },
+  }));
+
+  return [...blocksFromText, createEmptyTextBlock()];
+};
 
 export default function NoteEditor({ note, onSave, setTooltip }: Props) {
   const [toolbarPos, setToolbarPos] = useState({ x: 0, y: 0 });
   const [showToolbar, setShowToolbar] = useState(false);
 
-  // Dividimos el contenido inicial por bloques separados por doble salto
-  let initialBlocks: Block[] = [];
+  const [blocks, setBlocks] = useState<Block[]>(() =>
+    getInitialBlocksFromNote(note)
+  );
 
-  if (
-    note.content &&
-    note.content.trim() !== "" &&
-    note.content.trim() !== "EMPTY"
-  ) {
-    initialBlocks = note.content
-      .split(/\n\s*\n/)
-      .map((t) => createBlock(t.trim()));
-  }
+  // 🔁 Si cambia la nota (id), reseteamos bloques
+  useEffect(() => {
+    setBlocks(getInitialBlocksFromNote(note));
+  }, [note.id, note.content]);
 
-  // Siempre dejamos al menos un bloque vacío al final
-  const [blocks, setBlocks] = useState<Block[]>([
-    ...initialBlocks,
-    createBlock(""),
-  ]);
-
-  // Persistencia: guarda sin el último bloque vacío
+  // 💾 Persistencia: guarda sin el último bloque vacío
   const persist = (blocksToPersist: Block[]) => {
     const cleaned = blocksToPersist.filter((b, idx) => {
       const isLast = idx === blocksToPersist.length - 1;
-      return !(isLast && b.html.trim() === "");
+      if (!isLast) return true;
+
+      // Eliminamos ÚNICAMENTE el último bloque de texto vacío
+      if (b.type === "text") {
+        const html = (b.data as any).html ?? "";
+        return html.trim() !== "";
+      }
+
+      return true;
     });
-    onSave(cleaned.map((b) => b.html).join("\n\n"));
+
+    onSave(JSON.stringify(cleaned));
   };
 
-  // Maneja cambios de texto enriquecido
-  const handleChange = (id: string, newHtml: string) => {
+  // ✏️ Maneja cambios de datos de un bloque
+  const handleBlockChange = (id: string, newData: any) => {
     setBlocks((prev) => {
       const idx = prev.findIndex((b) => b.id === id);
       if (idx === -1) return prev;
 
-      const wasEmpty = prev[idx].html.trim() === "";
-      const isNowNonEmpty = newHtml.trim() !== "";
+      const prevBlock = prev[idx];
+      const updatedBlock: Block = { ...prevBlock, data: newData };
 
-      let updated = prev.map((b, i) =>
-        i === idx ? { ...b, html: newHtml } : b
-      );
+      let updated = [...prev];
+      updated[idx] = updatedBlock;
 
-      // Si es el último bloque y pasa de vacío a no vacío → crear nuevo
+      // Lógica de "si el último bloque vacío ahora tiene texto → crear uno nuevo vacío"
       const isLast = idx === prev.length - 1;
+
+      const wasEmpty =
+        prevBlock.type === "text" &&
+        typeof (prevBlock.data as any).html === "string" &&
+        (prevBlock.data as any).html.trim() === "";
+
+      const isNowNonEmpty =
+        updatedBlock.type === "text" &&
+        typeof (updatedBlock.data as any).html === "string" &&
+        (updatedBlock.data as any).html.trim() !== "";
+
       if (isLast && wasEmpty && isNowNonEmpty) {
-        updated = [...updated, createBlock("")];
+        updated = [...updated, createEmptyTextBlock()];
       }
 
       persist(updated);
@@ -77,33 +133,37 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
     });
   };
 
-  // Elimina bloque vacío y asegura que quede uno
+  // 🗑 Elimina bloque y asegura que quede al menos uno
   const handleDeleteBlock = (id: string) => {
     setBlocks((prev) => {
       const updated = prev.filter((b) => b.id !== id);
 
-      // 🧠 Si no queda ningún bloque, crear uno nuevo vacío (para mantener placeholder)
+      // Si no queda ningún bloque, crear uno nuevo vacío
       if (updated.length === 0) {
-        const newBlock = createBlock("");
+        const newBlock = createEmptyTextBlock();
         persist([newBlock]);
         return [newBlock];
       }
 
-      // 🧩 Si se eliminó el último bloque visible y el anterior tiene texto, agregar un nuevo vacío
+      // Si el último bloque tiene contenido, agregamos uno vacío al final
       const last = updated[updated.length - 1];
-      if (last.html.trim() !== "") {
-        const newBlock = createBlock("");
-        persist([...updated, newBlock]);
-        return [...updated, newBlock];
+      if (
+        last.type === "text" &&
+        typeof (last.data as any).html === "string" &&
+        (last.data as any).html.trim() !== ""
+      ) {
+        const newBlock = createEmptyTextBlock();
+        const next = [...updated, newBlock];
+        persist(next);
+        return next;
       }
 
-      // 🧹 Caso normal: simplemente persistir los bloques actualizados
       persist(updated);
       return updated;
     });
   };
 
-  // Muestra el toolbar al seleccionar texto
+  // 🎯 Muestra el toolbar al seleccionar texto
   useEffect(() => {
     const handleSelection = (e: MouseEvent | KeyboardEvent) => {
       const selection = window.getSelection();
@@ -114,7 +174,7 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
         return;
       }
 
-      // 🚫 Evitar tooltip si se selecciona dentro del título
+      // Evitar tooltip si se selecciona dentro del título
       const target = (e.target as HTMLElement) || document.activeElement;
       if (target && target.closest("#note-title")) {
         setShowToolbar(false);
@@ -139,20 +199,25 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
     <div className="note-editor">
       {blocks.map((block, index) => {
         const isLast = index === blocks.length - 1;
-        const isPlaceholder = isLast && block.html.trim() === "";
+
+        const isPlaceholder =
+          isLast &&
+          block.type === "text" &&
+          typeof (block.data as any).html === "string" &&
+          (block.data as any).html.trim() === "";
 
         return (
-          <RichTextBlock
+          <BlockRenderer
             key={block.id}
-            id={block.id}
-            html={block.html}
-            onChange={(id, html) => handleChange(id, html)}
+            block={block}
+            onChange={handleBlockChange}
             onDelete={handleDeleteBlock}
             setTooltip={setTooltip}
             isPlaceholder={isPlaceholder}
           />
         );
       })}
+
       <FloatingToolbar
         visible={showToolbar}
         x={toolbarPos.x}

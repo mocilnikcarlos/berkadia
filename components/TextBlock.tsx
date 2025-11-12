@@ -1,28 +1,30 @@
+// /components/block/TextBlock.tsx
 "use client";
+
 import { useEffect, useRef, useState } from "react";
 import type { TooltipData } from "@/hooks/useNote";
 import { useRichTextHotkeys } from "@/hooks/useRichTextHotkeys";
+import type { TextLikeBlock } from "@/types/blocks";
 
 interface Props {
-  id: string;
-  html: string;
-  onChange: (id: string, html: string) => void;
+  block: TextLikeBlock;
+  onChange: (id: string, data: any) => void;
   onDelete: (id: string) => void;
   setTooltip: (t: TooltipData | null) => void;
-  isPlaceholder?: boolean;
 }
 
-export default function RichTextBlock({
-  id,
-  html,
+export default function TextBlock({
+  block,
   onChange,
   onDelete,
   setTooltip,
-  isPlaceholder = false,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [focused, setFocused] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
+
+  const { id, data } = block;
+  const html = data.html || "";
 
   // 🧠 Inicializa contenido SOLO si está vacío al montar
   useEffect(() => {
@@ -35,7 +37,7 @@ export default function RichTextBlock({
   // 💾 Guarda cambios al escribir
   const handleInput = () => {
     if (!ref.current) return;
-    onChange(id, ref.current.innerHTML);
+    onChange(id, { ...data, html: ref.current.innerHTML });
   };
 
   // 🧹 Elimina bloque si está vacío al perder foco
@@ -77,11 +79,8 @@ export default function RichTextBlock({
   const handleMouseEnter = () => {
     if (!ref.current) return;
 
-    // 🚫 si hay texto seleccionado, no mostrar el tooltip de hover
     const selection = window.getSelection();
     if (selection && selection.toString().trim() !== "") return;
-
-    // 🚫 si justo se está seleccionando texto, no mostrar
     if (isSelecting) return;
 
     const rect = ref.current.getBoundingClientRect();
@@ -108,41 +107,36 @@ export default function RichTextBlock({
 
     const range = selection.getRangeAt(0);
 
-    // ✅ Si el bloque estaba vacío → limpiar placeholder visual
     el.classList.remove("placeholder");
 
-    // 🧠 Insertar texto plano en la posición actual del cursor sin borrar lo demás
     range.deleteContents();
     const textNode = document.createTextNode(text);
     range.insertNode(textNode);
 
-    // 🔁 Mover el cursor al final del texto insertado
     range.setStartAfter(textNode);
     range.setEndAfter(textNode);
     selection.removeAllRanges();
     selection.addRange(range);
 
-    // 💾 Notificar cambio
-    onChange(id, el.innerHTML);
+    onChange(id, { ...data, html: el.innerHTML });
   };
 
   return (
-    <div className="relative w-full">
-      <div
-        data-text-block
-        data-block-id={id}
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={handleInput}
-        onKeyDown={handleKeyDown}
-        onFocus={() => setFocused(true)}
-        onBlur={handleBlur}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseEnter={handleMouseEnter}
-        onPaste={handlePaste}
-        className={`
+    <div
+      data-text-block
+      data-block-id={id}
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      onInput={handleInput}
+      onKeyDown={handleKeyDown}
+      onFocus={() => setFocused(true)}
+      onBlur={handleBlur}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseEnter={handleMouseEnter}
+      onPaste={handlePaste}
+      className={`
         rich-block 
         w-full min-h-[2.5rem]
         px-4 py-3 rounded-2xl
@@ -150,17 +144,9 @@ export default function RichTextBlock({
         outline-none transition-all duration-150
         bg-[var(--heroui-background)] hover:bg-[rgba(255,255,255,0.02)]
       `}
-        style={{
-          cursor: "text",
-        }}
-      />
-
-      {/* Placeholder solo visible cuando el bloque está vacío */}
-      {isPlaceholder && (
-        <span className="absolute top-3 left-4 text-gray-500 select-none pointer-events-none">
-          + Escribí algo...
-        </span>
-      )}
-    </div>
+      style={{
+        cursor: "text",
+      }}
+    />
   );
 }
