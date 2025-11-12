@@ -153,38 +153,55 @@ function handleQuoteEnter(e: React.KeyboardEvent) {
   if (!quote) return false;
 
   const range = selection.getRangeAt(0);
-  const isEmpty = quote.textContent?.trim() === "";
+  const text = quote.textContent?.replace(/\u200B/g, "").trim() || "";
+  const isEmpty = text === "";
+
+  // --- Detectar posición del caret ---
+  const atStart =
+    range.collapsed &&
+    range.startContainer === quote.firstChild &&
+    range.startOffset === 0;
+
   const atEnd =
     range.collapsed &&
     range.startContainer === quote.lastChild &&
     range.startOffset ===
       (quote.lastChild?.textContent?.length ?? 0);
 
-  // Si el bloque está vacío o el cursor está al final, salimos
-  if (isEmpty || atEnd) {
-    e.preventDefault();
+  e.preventDefault();
 
+  // --- Caso 1: Quote vacío → eliminar y crear párrafo ---
+  if (isEmpty) {
     const p = document.createElement("p");
     p.innerHTML = "<br>";
-
-    // Insertar el nuevo párrafo después del quote
-    quote.parentNode?.insertBefore(p, quote.nextSibling);
-
-    // Mover el cursor al nuevo párrafo
-    const r = document.createRange();
-    r.selectNodeContents(p);
-    r.collapse(true);
-
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(r);
-    p.focus();
-
+    quote.parentNode?.insertBefore(p, quote);
+    quote.remove();
+    focusNode(p);
     return true;
   }
 
+  // --- Caso 2: Caret al inicio → crear párrafo arriba ---
+  if (atStart) {
+    const p = document.createElement("p");
+    p.innerHTML = "<br>";
+    quote.parentNode?.insertBefore(p, quote);
+    focusNode(p);
+    return true;
+  }
+
+  // --- Caso 3: Caret al final → crear párrafo abajo ---
+  if (atEnd) {
+    const p = document.createElement("p");
+    p.innerHTML = "<br>";
+    quote.parentNode?.insertBefore(p, quote.nextSibling);
+    focusNode(p);
+    return true;
+  }
+
+  // --- Caso 4: En medio del quote → comportamiento normal ---
   return false;
 }
+
 
 function handleQuoteShiftEnter(e: React.KeyboardEvent) {
   if (e.key !== "Enter" || !e.shiftKey) return false;
