@@ -243,6 +243,34 @@ function handleQuoteShiftEnter(e: React.KeyboardEvent) {
   return true;
 }
 
+function handleQuoteBackspace(e: React.KeyboardEvent) {
+  if (e.key !== "Backspace") return false;
+
+  const sel = window.getSelection();
+  if (!sel?.anchorNode) return false;
+
+  const element =
+    sel.anchorNode.nodeType === Node.TEXT_NODE
+      ? sel.anchorNode.parentElement
+      : (sel.anchorNode as HTMLElement);
+
+  const quote = element?.closest("blockquote");
+  if (!quote) return false;
+
+  // Dejar que el DOM borre el caracter, luego chequear
+  setTimeout(() => {
+    const text = quote.innerText.replace(/\u200B/g, "").trim();
+    if (text === "") {
+      const p = document.createElement("p");
+      p.innerHTML = "<br>";
+      quote.parentNode?.insertBefore(p, quote);
+      quote.remove();
+      focusNode(p);
+    }
+  }, 0);
+
+  return false;
+}
 
 // --- hook principal ---
 export function useRichTextHotkeys(ref: React.RefObject<HTMLDivElement | null>) {
@@ -257,6 +285,7 @@ export function useRichTextHotkeys(ref: React.RefObject<HTMLDivElement | null>) 
       if (handleLinePatterns(e, block)) return;
       if (handleQuoteShiftEnter(e)) return;
       if (handleQuoteEnter(e)) return;
+      if (handleQuoteBackspace(e)) return;
     },
     [ref]
   );
