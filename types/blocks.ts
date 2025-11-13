@@ -39,8 +39,15 @@ export type TextLikeBlock =
 export interface ImageBlock {
   id: string;
   type: "image";
-  data: { url: string; alt?: string; caption?: string };
+  data: {
+    url: string;
+    alt?: string;
+    caption?: string;
+    uploading?: boolean; // 👈 agregado
+    error?: boolean;     // 👈 agregado
+  };
 }
+
 
 export interface AudioBlock {
   id: string;

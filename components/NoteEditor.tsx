@@ -1,11 +1,13 @@
 // /components/block/NoteEditor.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { NoteRow, TooltipData } from "@/hooks/useNote";
 import FloatingToolbar from "./FloatingToolbar";
 import BlockRenderer from "./block/BlockRenderer";
 import type { Block } from "@/types/blocks";
+import { supabaseBrowser } from "@/lib/supabaseClient";
+import { uploadImageToStorage } from "@/lib/uploadImage";
 
 interface Props {
   note: NoteRow;
@@ -13,23 +15,21 @@ interface Props {
   setTooltip: (t: TooltipData | null) => void;
 }
 
-// 🔨 Crea un bloque de texto vacío
+// ---- Crea bloque vacío ----
 const createEmptyTextBlock = (): Block => ({
   id: crypto.randomUUID(),
   type: "text",
   data: { html: "" },
 });
 
-// 🧠 Intenta inicializar bloques a partir del contenido de la nota
+// ---- Inicializa bloques ----
 const getInitialBlocksFromNote = (note: NoteRow): Block[] => {
   const raw = note.content?.trim();
 
-  // Nota vacía
   if (!raw || raw === "" || raw === "EMPTY") {
     return [createEmptyTextBlock()];
   }
 
-  // 1️⃣ Intentar parsear como JSON de bloques (nuevo formato)
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
@@ -37,7 +37,6 @@ const getInitialBlocksFromNote = (note: NoteRow): Block[] => {
 
       if (blocks.length === 0) return [createEmptyTextBlock()];
 
-      // asegurar que haya un bloque vacío al final si el último tiene contenido
       const last = blocks[blocks.length - 1];
       if (
         last.type === "text" &&
@@ -49,11 +48,8 @@ const getInitialBlocksFromNote = (note: NoteRow): Block[] => {
 
       return [...blocks, createEmptyTextBlock()];
     }
-  } catch {
-    // 2️⃣ Si no es JSON, asumimos contenido de texto viejo → lo migramos
-  }
+  } catch {}
 
-  // 📜 Compatibilidad: contenido viejo como string plano separado por dobles saltos
   const parts = raw
     .split(/\n\s*\n/)
     .map((t) => t.trim())
@@ -71,35 +67,46 @@ const getInitialBlocksFromNote = (note: NoteRow): Block[] => {
 export default function NoteEditor({ note, onSave, setTooltip }: Props) {
   const [toolbarPos, setToolbarPos] = useState({ x: 0, y: 0 });
   const [showToolbar, setShowToolbar] = useState(false);
+  const [userId, setUserId] = useState("");
+
+  // ---- Obtener ID de usuario ----
+  useEffect(() => {
+    supabaseBrowser.auth.getUser().then(({ data }) => {
+      if (data?.user) setUserId(data.user.id);
+    });
+  }, []);
 
   const [blocks, setBlocks] = useState<Block[]>(() =>
     getInitialBlocksFromNote(note)
   );
 
-  // 🔁 Si cambia la nota (id), reseteamos bloques
+  // ---- Reset al cambiar nota ----
   useEffect(() => {
     setBlocks(getInitialBlocksFromNote(note));
   }, [note.id, note.content]);
 
-  // 💾 Persistencia: guarda sin el último bloque vacío
-  const persist = (blocksToPersist: Block[]) => {
-    const cleaned = blocksToPersist.filter((b, idx) => {
-      const isLast = idx === blocksToPersist.length - 1;
-      if (!isLast) return true;
+  // ---- Persistir cambios ----
+  const persist = useCallback(
+    (blocksToPersist: Block[]) => {
+      const cleaned = blocksToPersist.filter((b, idx) => {
+        const isLast = idx === blocksToPersist.length - 1;
 
-      // Eliminamos ÚNICAMENTE el último bloque de texto vacío
-      if (b.type === "text") {
-        const html = (b.data as any).html ?? "";
-        return html.trim() !== "";
-      }
+        if (!isLast) return true;
 
-      return true;
-    });
+        if (b.type === "text") {
+          const html = (b.data as any).html ?? "";
+          return html.trim() !== "";
+        }
 
-    onSave(JSON.stringify(cleaned));
-  };
+        return true;
+      });
 
-  // ✏️ Maneja cambios de datos de un bloque
+      onSave(JSON.stringify(cleaned));
+    },
+    [onSave]
+  );
+
+  // ---- Cambios en un bloque ----
   const handleBlockChange = (id: string, newData: any) => {
     setBlocks((prev) => {
       const idx = prev.findIndex((b) => b.id === id);
@@ -111,19 +118,16 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
       let updated = [...prev];
       updated[idx] = updatedBlock;
 
-      // Lógica de "si el último bloque vacío ahora tiene texto → crear uno nuevo vacío"
       const isLast = idx === prev.length - 1;
 
       const wasEmpty =
-        prevBlock.type === "text" &&
-        typeof (prevBlock.data as any).html === "string" &&
-        (prevBlock.data as any).html.trim() === "";
+        prevBlock.type === "text" && (prevBlock.data as any).html.trim() === "";
 
       const isNowNonEmpty =
         updatedBlock.type === "text" &&
-        typeof (updatedBlock.data as any).html === "string" &&
         (updatedBlock.data as any).html.trim() !== "";
 
+      // si escribo en el último → crear otro vacío
       if (isLast && wasEmpty && isNowNonEmpty) {
         updated = [...updated, createEmptyTextBlock()];
       }
@@ -133,25 +137,19 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
     });
   };
 
-  // 🗑 Elimina bloque y asegura que quede al menos uno
+  // ---- Eliminar bloque ----
   const handleDeleteBlock = (id: string) => {
     setBlocks((prev) => {
       const updated = prev.filter((b) => b.id !== id);
 
-      // Si no queda ningún bloque, crear uno nuevo vacío
       if (updated.length === 0) {
         const newBlock = createEmptyTextBlock();
         persist([newBlock]);
         return [newBlock];
       }
 
-      // Si el último bloque tiene contenido, agregamos uno vacío al final
       const last = updated[updated.length - 1];
-      if (
-        last.type === "text" &&
-        typeof (last.data as any).html === "string" &&
-        (last.data as any).html.trim() !== ""
-      ) {
+      if (last.type === "text" && (last.data as any).html.trim() !== "") {
         const newBlock = createEmptyTextBlock();
         const next = [...updated, newBlock];
         persist(next);
@@ -163,20 +161,13 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
     });
   };
 
-  // 🎯 Muestra el toolbar al seleccionar texto
+  // ---- Toolbar de selección ----
   useEffect(() => {
-    const handleSelection = (e: MouseEvent | KeyboardEvent) => {
+    const handleSelection = () => {
       const selection = window.getSelection();
       const text = selection?.toString().trim();
 
       if (!text) {
-        setShowToolbar(false);
-        return;
-      }
-
-      // Evitar tooltip si se selecciona dentro del título
-      const target = (e.target as HTMLElement) || document.activeElement;
-      if (target && target.closest("#note-title")) {
         setShowToolbar(false);
         return;
       }
@@ -195,34 +186,84 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
     };
   }, []);
 
+  // ---- Inserción de imagen ----
   useEffect(() => {
     const handler = (e: any) => {
       const { file, url, afterId } = e.detail;
+
+      // 1) Insertamos el bloque TEMPORAL en UI (NO persistimos aún)
+      let newBlockId = crypto.randomUUID();
 
       setBlocks((prev) => {
         const idx = prev.findIndex((b) => b.id === afterId);
         if (idx === -1) return prev;
 
-        const newBlock: Block = {
-          id: crypto.randomUUID(),
+        const tempBlock: Block = {
+          id: newBlockId,
           type: "image",
-          data: { url, alt: file.name, caption: "" },
+          data: {
+            url, // <-- BLOB temporal
+            alt: file.name,
+            caption: "",
+            uploading: true,
+          },
         };
 
-        const updated = [
-          ...prev.slice(0, idx + 1),
-          newBlock,
-          ...prev.slice(idx + 1),
-        ];
-
-        persist(updated);
-        return updated;
+        return [...prev.slice(0, idx + 1), tempBlock, ...prev.slice(idx + 1)];
       });
+
+      // 2) Subimos a Supabase
+      uploadImageToStorage({
+        file,
+        userId,
+        noteId: note.id,
+        blockId: newBlockId,
+      })
+        .then((publicUrl) => {
+          setBlocks((prev) => {
+            const finalBlocks: Block[] = prev.map((b) =>
+              b.id === newBlockId
+                ? {
+                    ...b,
+                    data: {
+                      ...(b.data as any),
+                      url: publicUrl, // <-- URL REAL
+                      uploading: false,
+                    },
+                  }
+                : b
+            );
+
+            // 3) Persistimos recién AHORA (con la URL correcta)
+            persist(finalBlocks);
+            return finalBlocks;
+          });
+        })
+        .catch(() => {
+          setBlocks((prev) => {
+            const errorBlocks: Block[] = prev.map((b) =>
+              b.id === newBlockId
+                ? {
+                    ...b,
+                    data: {
+                      ...(b.data as any),
+                      uploading: false,
+                      error: true,
+                    },
+                  }
+                : b
+            );
+
+            // también persistimos el estado con error (opcional)
+            persist(errorBlocks);
+            return errorBlocks;
+          });
+        });
     };
 
     window.addEventListener("insert-image-block", handler);
     return () => window.removeEventListener("insert-image-block", handler);
-  }, []);
+  }, [userId, note.id, persist]);
 
   return (
     <div className="note-editor">
@@ -232,7 +273,6 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
         const isPlaceholder =
           isLast &&
           block.type === "text" &&
-          typeof (block.data as any).html === "string" &&
           (block.data as any).html.trim() === "";
 
         return (
