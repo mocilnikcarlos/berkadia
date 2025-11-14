@@ -14,23 +14,23 @@ export async function uploadImageToStorage({
   noteId,
   blockId,
 }: UploadParams) {
-  // Path correcto (sin repetir el bucket)
+  // ❗ El bucket NO va en el path
   const filePath = `${userId}/${noteId}/${blockId}/${file.name}`;
 
   const { error } = await supabaseBrowser.storage
-    .from("berkanote")
+    .from("berkanote")    // el bucket se define aquí
     .upload(filePath, file, {
       upsert: true,
     });
 
-  if (error) {
-    console.error("Upload error:", error);
-    throw error;
-  }
+  if (error) throw error;
 
   const { data } = supabaseBrowser.storage
     .from("berkanote")
     .getPublicUrl(filePath);
 
-  return data.publicUrl;
+  return {
+    url: data.publicUrl,
+    path: filePath
+  };
 }

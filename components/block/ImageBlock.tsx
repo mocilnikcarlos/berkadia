@@ -1,6 +1,6 @@
 "use client";
 
-import type { TooltipData } from "@/hooks/useNote";
+import { supabaseBrowser } from "@/lib/supabaseClient";
 import type { Block } from "@/types/blocks";
 
 interface Props {
@@ -14,6 +14,18 @@ export default function ImageBlock({ block, onChange, onDelete }: Props) {
 
   const handleCaptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(id, { ...data, caption: e.target.value });
+  };
+
+  const handleDelete = async () => {
+    try {
+      if (data.storagePath) {
+        await supabaseBrowser.storage
+          .from("berkanote")
+          .remove([data.storagePath]);
+      }
+    } finally {
+      onDelete(id);
+    }
   };
 
   return (
@@ -33,7 +45,7 @@ export default function ImageBlock({ block, onChange, onDelete }: Props) {
       />
 
       <button
-        onClick={() => onDelete(id)}
+        onClick={handleDelete}
         className="text-red-500 text-xs mt-2 hover:underline"
       >
         Eliminar imagen

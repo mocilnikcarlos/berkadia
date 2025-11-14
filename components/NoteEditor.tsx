@@ -1,4 +1,4 @@
-// /components/block/NoteEditor.tsx
+// /components/NoteEditor.tsx
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -202,24 +202,25 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
           id: newBlockId,
           type: "image",
           data: {
-            url, // <-- BLOB temporal
+            url, // BLOB temporal
             alt: file.name,
             caption: "",
             uploading: true,
+            storagePath: undefined, // <-- se completa después
           },
         };
 
         return [...prev.slice(0, idx + 1), tempBlock, ...prev.slice(idx + 1)];
       });
 
-      // 2) Subimos a Supabase
+      // 2) Subida real a Supabase
       uploadImageToStorage({
         file,
         userId,
         noteId: note.id,
         blockId: newBlockId,
       })
-        .then((publicUrl) => {
+        .then(({ url: publicUrl, path }) => {
           setBlocks((prev) => {
             const finalBlocks: Block[] = prev.map((b) =>
               b.id === newBlockId
@@ -227,14 +228,14 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
                     ...b,
                     data: {
                       ...(b.data as any),
-                      url: publicUrl, // <-- URL REAL
+                      url: publicUrl,
+                      storagePath: path, // <-- guardamos la ruta real
                       uploading: false,
                     },
                   }
                 : b
             );
 
-            // 3) Persistimos recién AHORA (con la URL correcta)
             persist(finalBlocks);
             return finalBlocks;
           });
@@ -254,7 +255,6 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
                 : b
             );
 
-            // también persistimos el estado con error (opcional)
             persist(errorBlocks);
             return errorBlocks;
           });

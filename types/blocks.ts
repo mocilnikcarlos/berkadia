@@ -45,6 +45,7 @@ export interface ImageBlock {
     caption?: string;
     uploading?: boolean; // 👈 agregado
     error?: boolean;     // 👈 agregado
+    storagePath?: string; // 👈 agregado
   };
 }
 
