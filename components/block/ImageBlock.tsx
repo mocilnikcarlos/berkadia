@@ -23,6 +23,7 @@ export default function ImageBlock({ block, onChange, onDelete }: Props) {
           .from("berkanote")
           .remove([data.storagePath]);
       }
+    } catch (err) {
     } finally {
       onDelete(id);
     }
