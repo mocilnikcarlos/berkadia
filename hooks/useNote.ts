@@ -14,15 +14,23 @@ export interface TooltipData {
   text: string;
 }
 
-export function useNote(supabase: SupabaseClient, id: string) {
-  const [note, setNote] = useState<NoteRow | null>(null);
+export function useNote(
+  supabase: SupabaseClient,
+  id: string,
+  initialNote?: NoteRow | null
+) {
+  const [note, setNote] = useState<NoteRow | null>(initialNote ?? null);
   const [saving, setSaving] = useState(false);
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ───── Cargar nota ─────
+  // ───────────────────────────────────────────────
+  // 🔥 Cargar nota SOLO si no vino desde el server
+  // ───────────────────────────────────────────────
   useEffect(() => {
+    if (initialNote) return; // Ya está cargada por el Server Component
+
     let active = true;
 
     const fetchNote = async () => {
@@ -33,8 +41,10 @@ export function useNote(supabase: SupabaseClient, id: string) {
           .eq("id", id)
           .single();
 
+        if (!active) return;
+
         if (error) console.error("Error cargando nota:", error);
-        else if (active && data) setNote(data);
+        else setNote(data);
       } catch (err) {
         console.error("Error inesperado:", err);
       }
@@ -45,15 +55,19 @@ export function useNote(supabase: SupabaseClient, id: string) {
     return () => {
       active = false;
     };
-  }, [id, supabase]);
+  }, [id, supabase, initialNote]);
 
-  // ───── Guardar contenido (debounced) ─────
+  // ───────────────────────────────────────────────
+  // 🔥 Guardar contenido (debounced)
+  // ───────────────────────────────────────────────
   const handleSave = (newContent: string) => {
     if (!note) return;
+
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
     saveTimeoutRef.current = setTimeout(async () => {
       setSaving(true);
+
       const { error } = await supabase
         .from("notes")
         .update({ content: newContent })
@@ -66,13 +80,17 @@ export function useNote(supabase: SupabaseClient, id: string) {
     }, 800);
   };
 
-  // ───── Guardar título (debounced) ─────
+  // ───────────────────────────────────────────────
+  // 🔥 Guardar título (debounced)
+  // ───────────────────────────────────────────────
   const handleSaveTitle = (newTitle: string) => {
     if (!note) return;
+
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
     saveTimeoutRef.current = setTimeout(async () => {
       setSaving(true);
+
       const { error } = await supabase
         .from("notes")
         .update({ title: newTitle })
@@ -85,7 +103,9 @@ export function useNote(supabase: SupabaseClient, id: string) {
     }, 800);
   };
 
-  // ───── Copiar texto ─────
+  // ───────────────────────────────────────────────
+  // Copiar texto
+  // ───────────────────────────────────────────────
   const handleCopy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);

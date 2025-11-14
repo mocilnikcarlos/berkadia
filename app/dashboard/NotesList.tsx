@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation"; // 👈 IMPORTANTE
 import { Note } from "@/hooks/useNotes";
 import { Spinner, Button, useDisclosure } from "@heroui/react";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function NotesList({ notes, loading, onDelete }: Props) {
+  const router = useRouter(); // 👈 NAVEGACIÓN SPA
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [noteToDelete, setNoteToDelete] = useState<string | number | null>(
     null
@@ -45,7 +47,7 @@ export function NotesList({ notes, loading, onDelete }: Props) {
             key={note.id}
             role="button"
             tabIndex={0}
-            onClick={() => (window.location.href = `/dashboard/${note.id}`)}
+            onClick={() => router.push(`/dashboard/${note.id}`)} // 👈 NAVEGACIÓN SPA
             className="
               rounded-xl bg-content2 border border-default-100 shadow-sm
               hover:shadow-md hover:scale-[1.01]
@@ -56,6 +58,7 @@ export function NotesList({ notes, loading, onDelete }: Props) {
               <h3 className="text-base font-semibold">
                 {note.title || "Sin título"}
               </h3>
+
               <Button
                 size="sm"
                 color="danger"

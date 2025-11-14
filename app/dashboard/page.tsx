@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { NotesList } from "./NotesList";
 import { DashboardHeader } from "./DashboardHeader";
 import { Card, CardBody } from "@heroui/react";
+import { supabaseBrowser } from "@/lib/supabaseClient";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -15,10 +16,23 @@ export default function DashboardPage() {
     return <p className="text-center mt-40">Cargando usuario...</p>;
 
   const handleCreateNote = async () => {
-    const newNote = await addNote("Nueva nota");
-    if (newNote?.id) {
-      router.push(`/dashboard/${newNote.id}`);
-    }
+    // 1) Generamos ID local instantáneo
+    const tempId = crypto.randomUUID();
+
+    // 2) Navegamos YA (sin esperar a Supabase)
+    router.push(`/dashboard/${tempId}`);
+
+    // 3) Creamos la nota en Supabase en segundo plano
+    const supabase = supabaseBrowser;
+    const { data: auth } = await supabase.auth.getUser();
+    const userId = auth?.user?.id;
+
+    await supabase.from("notes").insert({
+      id: tempId, // usamos el UUID como ID real
+      title: "Nueva nota",
+      content: "EMPTY",
+      user_id: userId,
+    });
   };
 
   return (
