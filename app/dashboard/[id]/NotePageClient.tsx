@@ -3,9 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 import { useNote } from "@/hooks/useNote";
-import NoteEditor from "@/components/NoteEditor";
+import dynamic from "next/dynamic";
+
 import TooltipButton from "@/components/TooltipButton";
 import { Breadcrumbs, BreadcrumbItem, Spinner } from "@heroui/react";
+
+// 🚀 Import dinámico del editor (client-only, sin SSR)
+const NoteEditor = dynamic(() => import("@/components/NoteEditor"), {
+  ssr: false,
+});
 
 interface Props {
   initialNote: any;
@@ -93,11 +99,14 @@ export default function NotePageClient({ initialNote, id }: Props) {
             setTooltip={(t) => {
               const selection = window.getSelection();
               const titleEl = document.querySelector("#note-title");
+
+              // Evita tooltip cuando la selección está en el título
               if (
                 selection?.anchorNode &&
                 titleEl?.contains(selection.anchorNode)
               )
                 return;
+
               setTooltip(t);
             }}
           />

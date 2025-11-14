@@ -8,29 +8,43 @@ interface UploadParams {
   blockId: string;
 }
 
-export async function uploadImageToStorage({
+export type UploadImageResult = {
+  url?: string;
+  path?: string;
+  error: Error | null;
+};
+
+export async function uploadImage({
   file,
   userId,
   noteId,
   blockId,
-}: UploadParams) {
-  // ❗ El bucket NO va en el path
-  const filePath = `${userId}/${noteId}/${blockId}/${file.name}`;
+}: UploadParams): Promise<UploadImageResult> {
+  try {
+    const filePath = `${userId}/${noteId}/${blockId}/${file.name}`;
 
-  const { error } = await supabaseBrowser.storage
-    .from("berkanote")    // el bucket se define aquí
-    .upload(filePath, file, {
-      upsert: true,
-    });
+    const { error: uploadError } = await supabaseBrowser.storage
+      .from("berkanote")
+      .upload(filePath, file, {
+        upsert: true,
+      });
 
-  if (error) throw error;
+    if (uploadError) {
+      return { error: uploadError };
+    }
 
-  const { data } = supabaseBrowser.storage
-    .from("berkanote")
-    .getPublicUrl(filePath);
+    const { data } = supabaseBrowser.storage
+      .from("berkanote")
+      .getPublicUrl(filePath);
 
-  return {
-    url: data.publicUrl,
-    path: filePath
-  };
+    return {
+      url: data.publicUrl,
+      path: filePath,
+      error: null,
+    };
+  } catch (err) {
+    return {
+      error: err as Error,
+    };
+  }
 }

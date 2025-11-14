@@ -1,5 +1,5 @@
-// app/dashboard/[id]/page.tsx
 import { supabaseServer } from "@/lib/supabaseServer";
+import { cookies } from "next/headers";
 import NotePageClient from "./NotePageClient";
 
 export default async function Page({
@@ -7,11 +7,15 @@ export default async function Page({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  // OBLIGADO: resolver params
   const { id } = await params;
 
-  const supabase = supabaseServer();
+  // OBLIGADO: resolver cookies()
+  const cookieStore = await cookies();
 
-  const { data: note, error } = await supabase
+  const supabase = supabaseServer(cookieStore);
+
+  const { data: note } = await supabase
     .from("notes")
     .select("*")
     .eq("id", id)

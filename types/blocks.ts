@@ -56,9 +56,33 @@ export interface AudioBlock {
   data: { url: string; title?: string };
 }
 
+type ImageBlockData = {
+  url?: string; // ahora opcional porque en "loading" todavía puede no estar
+  alt?: string;
+  caption?: string;
+  storagePath?: string;
+
+  // 🔥 NUEVOS CAMPOS
+  status?: "loading" | "idle" | "error";
+  file?: File;
+
+  // (opcionales legacy, si los tenías)
+  uploading?: boolean;
+  error?: boolean;
+};
 
 // ------- UNION TOTAL -------
 export type Block =
+  | {
+      id: string;
+      type: "text";
+      data: { html: string };
+    }
+  | {
+      id: string;
+      type: "image";
+      data: ImageBlockData;
+    }
   | TextBlock
   | QuoteBlock
   | ListBlock

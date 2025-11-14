@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState, useEffect } from "react";
 import type { TooltipData } from "@/hooks/useNote";
-import { Button } from "@heroui/react";
+import { Copy, Check } from "lucide-react";
 
 interface Props {
   tooltip: TooltipData;
@@ -13,40 +13,23 @@ export default function TooltipButton({ tooltip, onCopy, setTooltip }: Props) {
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Ocultado inteligente del tooltip
   useEffect(() => {
     if (!tooltip.text) return;
-    let hideTimeout: NodeJS.Timeout;
 
     const handleMove = (e: MouseEvent) => {
       const el = e.target as HTMLElement | null;
       const overTooltip = el?.closest("[data-tooltip-button]");
       const overBlock = el?.closest("[data-text-block]");
 
-      if (overTooltip || overBlock) {
-        clearTimeout(hideTimeout);
-        return;
-      }
+      if (overTooltip || overBlock) return;
 
-      clearTimeout(hideTimeout);
-      hideTimeout = setTimeout(() => setTooltip(null), 200);
+      hideTimeoutRef.current = setTimeout(() => setTooltip(null), 200);
     };
 
     document.addEventListener("mousemove", handleMove);
-    return () => {
-      clearTimeout(hideTimeout);
-      document.removeEventListener("mousemove", handleMove);
-    };
+    return () => document.removeEventListener("mousemove", handleMove);
   }, [tooltip.text, setTooltip]);
-
-  const handleEnter = () => {
-    if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-  };
-
-  const handleLeave = (e: React.MouseEvent<HTMLElement>) => {
-    const toElement = e.relatedTarget as HTMLElement | null;
-    if (toElement?.closest("[data-text-block]")) return;
-    hideTimeoutRef.current = setTimeout(() => setTooltip(null), 200);
-  };
 
   const handleCopy = async () => {
     try {
@@ -55,7 +38,7 @@ export default function TooltipButton({ tooltip, onCopy, setTooltip }: Props) {
       setTimeout(() => {
         setCopied(false);
         setTooltip(null);
-      }, 1000);
+      }, 900);
     } catch (err) {
       console.error("Error copiando texto:", err);
     }
@@ -66,8 +49,6 @@ export default function TooltipButton({ tooltip, onCopy, setTooltip }: Props) {
   return (
     <div
       data-tooltip-button
-      onMouseEnter={handleEnter}
-      onMouseLeave={handleLeave}
       className="fixed z-50 transition-transform duration-200"
       style={{
         top: tooltip.y - 8,
@@ -75,16 +56,31 @@ export default function TooltipButton({ tooltip, onCopy, setTooltip }: Props) {
         transform: "translateX(-50%)",
       }}
     >
-      <Button
-        size="sm"
-        radius="full"
-        color={copied ? "primary" : "primary"}
-        variant="solid"
+      <button
         onClick={handleCopy}
-        className="px-3 py-1 text-xs font-medium shadow-lg"
+        className={`
+          flex items-center gap-2 px-3 py-1.5 text-sm font-medium
+          rounded-full
+          text-white 
+          transition-all duration-150
+
+          bg-gradient-to-b from-[#191919] to-[#1A1A1A]
+          border border-white/10
+          shadow-[0_4px_12px_rgba(0,0,0,0.35)]
+
+          hover:bg-[#222]
+          active:scale-95
+          cursor-pointer
+        `}
       >
+        {copied ? (
+          <Check size={14} className="text-green-400" />
+        ) : (
+          <Copy size={14} className="text-white" />
+        )}
+
         {copied ? "Copiado" : "Copiar bloque"}
-      </Button>
+      </button>
     </div>
   );
 }
