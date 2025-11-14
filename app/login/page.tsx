@@ -15,11 +15,11 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-12 bg-background text-foreground">
+      <h1 className="text-5xl font-bold">Berkadia</h1>
       <Button color="primary" onClick={handleLogin} size="lg">
         Iniciar sesión con Google
       </Button>
-      <Button color="primary">Button</Button>
     </main>
   );
 }

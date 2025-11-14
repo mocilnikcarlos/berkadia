@@ -27,11 +27,8 @@ export default function TooltipButton({ tooltip, onCopy, setTooltip }: Props) {
         return;
       }
 
-      // Espera 200ms antes de cerrar si el cursor sale de ambos
       clearTimeout(hideTimeout);
-      hideTimeout = setTimeout(() => {
-        setTooltip(null);
-      }, 200);
+      hideTimeout = setTimeout(() => setTooltip(null), 200);
     };
 
     document.addEventListener("mousemove", handleMove);
@@ -45,9 +42,8 @@ export default function TooltipButton({ tooltip, onCopy, setTooltip }: Props) {
     if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
   };
 
-  const handleLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleLeave = (e: React.MouseEvent<HTMLElement>) => {
     const toElement = e.relatedTarget as HTMLElement | null;
-    // solo cierra si el mouse sale realmente del bloque
     if (toElement?.closest("[data-text-block]")) return;
     hideTimeoutRef.current = setTimeout(() => setTooltip(null), 200);
   };
@@ -56,30 +52,39 @@ export default function TooltipButton({ tooltip, onCopy, setTooltip }: Props) {
     try {
       await navigator.clipboard.writeText(tooltip.text);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1000);
+      setTimeout(() => {
+        setCopied(false);
+        setTooltip(null);
+      }, 1000);
     } catch (err) {
       console.error("Error copiando texto:", err);
     }
   };
 
-  // 🚫 No mostrar tooltip si se está mostrando uno de selección (texto muy corto → hover)
-  if (!tooltip.text || window.getSelection()?.toString().trim()) {
-    return null;
-  }
+  if (!tooltip.text || window.getSelection()?.toString().trim()) return null;
 
   return (
-    <Button
+    <div
       data-tooltip-button
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
-      onClick={handleCopy}
-      className="tooltip-button"
+      className="fixed z-50 transition-transform duration-200"
       style={{
-        top: tooltip.y - 5,
+        top: tooltip.y - 8,
         left: tooltip.x,
+        transform: "translateX(-50%)",
       }}
     >
-      {copied ? "✅ Copiado!" : "📋 Copiar bloque"}
-    </Button>
+      <Button
+        size="sm"
+        radius="full"
+        color={copied ? "primary" : "primary"}
+        variant="solid"
+        onClick={handleCopy}
+        className="px-3 py-1 text-xs font-medium shadow-lg"
+      >
+        {copied ? "Copiado" : "Copiar bloque"}
+      </Button>
+    </div>
   );
 }
