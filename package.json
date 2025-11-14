@@ -51,6 +51,7 @@
     "@heroui/toast": "2.0.17",
     "@heroui/tooltip": "2.2.24",
     "@heroui/user": "2.2.22",
+    "@lottiefiles/dotlottie-react": "^0.17.7",
     "@react-aria/ssr": "3.9.10",
     "@react-aria/visually-hidden": "3.8.28",
     "@supabase/ssr": "^0.7.0",

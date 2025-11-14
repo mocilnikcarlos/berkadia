@@ -2,6 +2,9 @@
 
 import { supabaseBrowser } from "@/lib/supabaseClient";
 import type { Block } from "@/types/blocks";
+import ImageLoader from "./Loaders/ImageLoader";
+import ImageError from "./Loaders/ImageError";
+import { uploadImage } from "@/lib/uploadImage";
 
 interface Props {
   block: Extract<Block, { type: "image" }>;
@@ -11,6 +14,25 @@ interface Props {
 
 export default function ImageBlock({ block, onChange, onDelete }: Props) {
   const { id, data } = block;
+
+  // ----------------------------
+  // MANEJO DE ESTADOS: loading, error, idle
+  // ----------------------------
+
+  const retryUpload = async () => {
+    if (!data.file) return;
+
+    // Vuelve al estado loading
+    onChange(id, { ...data, status: "loading" });
+
+    const { url, path, error } = await uploadImage(data.file);
+
+    if (error) {
+      onChange(id, { ...data, status: "error" });
+    } else {
+      onChange(id, { ...data, status: "idle", url, storagePath: path });
+    }
+  };
 
   const handleCaptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(id, { ...data, caption: e.target.value });
@@ -24,11 +46,25 @@ export default function ImageBlock({ block, onChange, onDelete }: Props) {
           .remove([data.storagePath]);
       }
     } catch (err) {
+      // silencio, no romper UX
     } finally {
       onDelete(id);
     }
   };
 
+  // ----------------------------
+  // ESTADOS DEL BLOQUE
+  // ----------------------------
+
+  if (data.status === "loading") {
+    return <ImageLoader />;
+  }
+
+  if (data.status === "error") {
+    return <ImageError onRetry={retryUpload} />;
+  }
+
+  // Estado: imagen lista
   return (
     <div className="w-full flex flex-col items-center gap-2 my-4">
       <img
