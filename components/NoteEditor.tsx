@@ -6,18 +6,14 @@ import {
   Draggable,
   DropResult,
 } from "@hello-pangea/dnd";
-
 import FloatingToolbar from "./FloatingToolbar";
 import BlockRenderer from "./block/BlockRenderer";
-
 import type { NoteRow, TooltipData } from "@/hooks/useNote";
 import { useBlocks } from "@/hooks/editor/useBlocks";
 import { useImageInsertion } from "@/hooks/editor/useImageInsertion";
 import { useSelectionToolbar } from "@/hooks/editor/useSelectionToolbar";
 import { useEditorUser } from "@/hooks/editor/useEditorUser";
-
-import { arrayMove } from "@dnd-kit/sortable";
-
+import { arrayMove } from "@/lib/arrayMove";
 interface Props {
   note: NoteRow;
   onSave: (content: string) => void;
@@ -72,6 +68,23 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
                   block.type === "text" &&
                   (block.data as any).html.trim() === "";
 
+                // 🚫 NO draggable si es placeholder
+                if (isPlaceholder) {
+                  return (
+                    <BlockRenderer
+                      key={block.id}
+                      block={block}
+                      onChange={handleBlockChange}
+                      onDelete={handleDeleteBlock}
+                      setTooltip={setTooltip}
+                      isPlaceholder={true}
+                      dragHandleProps={null} // sin handle
+                      isDragging={false}
+                    />
+                  );
+                }
+
+                // ✔ draggable normal
                 return (
                   <Draggable
                     key={block.id}
@@ -84,7 +97,7 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
                         {...provided.draggableProps}
                         style={{
                           ...provided.draggableProps.style,
-                          opacity: snapshot.isDragging ? 1 : 1, // <- no ghost
+                          opacity: snapshot.isDragging ? 1 : 1,
                         }}
                       >
                         <BlockRenderer
@@ -92,9 +105,9 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
                           onChange={handleBlockChange}
                           onDelete={handleDeleteBlock}
                           setTooltip={setTooltip}
-                          isPlaceholder={isPlaceholder}
-                          dragHandleProps={provided.dragHandleProps} // <- SOLO PASAR HANDLE, no el wrapper
-                          isDragging={snapshot.isDragging} // <- nuevo
+                          isPlaceholder={false}
+                          dragHandleProps={provided.dragHandleProps}
+                          isDragging={snapshot.isDragging}
                         />
                       </div>
                     )}
