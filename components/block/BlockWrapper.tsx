@@ -9,30 +9,35 @@ interface BlockWrapperProps {
   id: string;
   isPlaceholder?: boolean;
   onDelete: (id: string) => void;
-  children: React.ReactNode; // 👈 VOLVIÓ
+  children: React.ReactNode;
 }
 
 export default function BlockWrapper({
   id,
   isPlaceholder = false,
   onDelete,
-  children, // 👈 SE USA
+  children,
 }: BlockWrapperProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = () => {
+    setIsDeleting(true); // 👈 activa fade-out
+    setTimeout(() => onDelete(id), 180); // 👈 elimina después de animar
+  };
 
   return (
     <div
       data-block-id={id}
-      data-block-wrapper
       className={`
-        relative w-full flex gap-2 items-start group
-        transition-all duration-150 rounded-2xl
-        ${
-          menuOpen
-            ? "bg-[rgba(255,255,255,0.02)]"
-            : "hover:bg-[rgba(255,255,255,0.02)]"
-        }
+        relative w-full flex gap-2 items-start group rounded-2xl
+        transition-all duration-150 ease-out
+        ${menuOpen ? "bg-[rgba(255,255,255,0.02)]" : "hover:bg-[rgba(255,255,255,0.02)]"}
+        ${isDeleting ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}
       `}
+      style={{
+        transitionProperty: "opacity, transform",
+      }}
     >
       {/* IZQUIERDA: + y drag */}
       <div
@@ -51,7 +56,7 @@ export default function BlockWrapper({
         </button>
       </div>
 
-      {/* CONTENIDO DEL BLOQUE */}
+      {/* CONTENIDO */}
       <div className="flex-1 relative">
         {children}
 
@@ -69,7 +74,7 @@ export default function BlockWrapper({
           ${menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}
         `}
       >
-        <BlockMenu onDelete={() => onDelete(id)} setMenuOpen={setMenuOpen} />
+        <BlockMenu onDelete={handleDelete} setMenuOpen={setMenuOpen} />
       </div>
     </div>
   );
