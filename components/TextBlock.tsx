@@ -171,9 +171,12 @@ export default function TextBlock({
         );
       }}
       onDragOver={(e) => e.preventDefault()}
-      className={
-        "rich-block w-full min-h-[2.5rem] px-4 py-3 rounded-2xl text-[15px] leading-relaxed outline-none transition-all duration-150 bg-[var(--heroui-background)] hover:bg-[rgba(255,255,255,0.02)] "
-      }
+      className="
+        rich-block w-full min-h-[2.5rem]
+        px-4 py-3
+        text-[15px] leading-relaxed outline-none
+        bg-transparent
+        transition-all duration-150"
       style={{ cursor: "text" }}
     />
   );

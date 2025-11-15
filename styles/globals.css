@@ -88,3 +88,7 @@ blockquote {
     height: 0.6em;
     content: "";
 }
+
+.force-hover .group-hover\:opacity-100 {
+    opacity: 1 !important;
+}
