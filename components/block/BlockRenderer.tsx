@@ -1,4 +1,3 @@
-// /components/block/BlockRenderer.tsx
 "use client";
 
 import type { Block } from "@/types/blocks";
@@ -13,6 +12,8 @@ interface BlockRendererProps {
   onDelete: (id: string) => void;
   setTooltip: (t: TooltipData | null) => void;
   isPlaceholder?: boolean;
+  dragHandleProps?: any;
+  isDragging?: boolean;
 }
 
 export default function BlockRenderer({
@@ -21,6 +22,7 @@ export default function BlockRenderer({
   onDelete,
   setTooltip,
   isPlaceholder = false,
+  dragHandleProps,
 }: BlockRendererProps) {
   switch (block.type) {
     case "text":
@@ -30,8 +32,9 @@ export default function BlockRenderer({
       return (
         <BlockWrapper
           id={block.id}
-          isPlaceholder={isPlaceholder}
           onDelete={onDelete}
+          isPlaceholder={isPlaceholder}
+          dragHandleProps={dragHandleProps}
         >
           <TextBlock
             block={block}
@@ -42,32 +45,26 @@ export default function BlockRenderer({
         </BlockWrapper>
       );
 
-    // 🖼 Bloque de imagen (placeholder futuro)
     case "image":
       return (
         <BlockWrapper
           id={block.id}
-          isPlaceholder={isPlaceholder}
           onDelete={onDelete}
+          isPlaceholder={isPlaceholder}
+          dragHandleProps={dragHandleProps}
         >
           <ImageBlock block={block} onChange={onChange} onDelete={onDelete} />
         </BlockWrapper>
       );
 
-    // 🔊 Bloque de audio (placeholder futuro)
-    case "audio":
+    default:
       return (
-        <BlockWrapper id={block.id} onDelete={onDelete}>
-          <div className="px-4 py-3 rounded-2xl bg-[var(--heroui-background)] text-sm text-gray-400">
-            Bloque de audio (pendiente de implementar)
-          </div>
-        </BlockWrapper>
-      );
-
-    default: {
-      const _exhaustive: never = block;
-      return (
-        <BlockWrapper id={(block as any).id} onDelete={onDelete}>
+        <BlockWrapper
+          id={block.id}
+          onDelete={onDelete}
+          isPlaceholder={isPlaceholder}
+          dragHandleProps={dragHandleProps}
+        >
           <TextBlock
             block={block as any}
             onChange={onChange}
@@ -76,6 +73,5 @@ export default function BlockRenderer({
           />
         </BlockWrapper>
       );
-    }
   }
 }
