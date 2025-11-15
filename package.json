@@ -10,6 +10,8 @@
     "co": "sui-mono commit"
   },
   "dependencies": {
+    "@dnd-kit/modifiers": "^9.0.0",
+    "@hello-pangea/dnd": "^18.0.1",
     "@heroui/accordion": "2.2.24",
     "@heroui/alert": "2.2.27",
     "@heroui/autocomplete": "2.3.29",
