@@ -7,6 +7,7 @@ import { useBlocks } from "@/hooks/editor/useBlocks";
 import { useImageInsertion } from "@/hooks/editor/useImageInsertion";
 import { useSelectionToolbar } from "@/hooks/editor/useSelectionToolbar";
 import { useEditorUser } from "@/hooks/editor/useEditorUser";
+import { AnimatePresence } from "framer-motion";
 
 interface Props {
   note: NoteRow;
@@ -40,7 +41,7 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
   const { showToolbar, toolbarPos } = useSelectionToolbar();
 
   return (
-    <div className="note-editor">
+    <>
       {blocks.map((block, index) => {
         const isLast = index === blocks.length - 1;
 
@@ -66,6 +67,6 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
         x={toolbarPos.x}
         y={toolbarPos.y}
       />
-    </div>
+    </>
   );
 }

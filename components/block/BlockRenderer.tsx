@@ -23,13 +23,16 @@ export default function BlockRenderer({
   isPlaceholder = false,
 }: BlockRendererProps) {
   switch (block.type) {
-    // 🔤 Bloques de texto enriquecido
     case "text":
     case "quote":
     case "list":
     case "code":
       return (
-        <BlockWrapper id={block.id} isPlaceholder={isPlaceholder}>
+        <BlockWrapper
+          id={block.id}
+          isPlaceholder={isPlaceholder}
+          onDelete={onDelete}
+        >
           <TextBlock
             block={block}
             onChange={onChange}
@@ -42,7 +45,7 @@ export default function BlockRenderer({
     // 🖼 Bloque de imagen (placeholder futuro)
     case "image":
       return (
-        <BlockWrapper id={block.id}>
+        <BlockWrapper id={block.id} onDelete={onDelete}>
           <ImageBlock block={block} onChange={onChange} onDelete={onDelete} />
         </BlockWrapper>
       );
@@ -50,7 +53,7 @@ export default function BlockRenderer({
     // 🔊 Bloque de audio (placeholder futuro)
     case "audio":
       return (
-        <BlockWrapper id={block.id}>
+        <BlockWrapper id={block.id} onDelete={onDelete}>
           <div className="px-4 py-3 rounded-2xl bg-[var(--heroui-background)] text-sm text-gray-400">
             Bloque de audio (pendiente de implementar)
           </div>
@@ -60,7 +63,7 @@ export default function BlockRenderer({
     default: {
       const _exhaustive: never = block;
       return (
-        <BlockWrapper id={(block as any).id}>
+        <BlockWrapper id={(block as any).id} onDelete={onDelete}>
           <TextBlock
             block={block as any}
             onChange={onChange}
