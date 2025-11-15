@@ -6,7 +6,13 @@ import { useNote } from "@/hooks/useNote";
 import dynamic from "next/dynamic";
 
 import TooltipButton from "@/components/TooltipButton";
-import { Breadcrumbs, BreadcrumbItem, Spinner } from "@heroui/react";
+import {
+  Breadcrumbs,
+  BreadcrumbItem,
+  Spinner,
+  Code,
+  Chip,
+} from "@heroui/react";
 
 // 🚀 Import dinámico del editor (client-only, sin SSR)
 const NoteEditor = dynamic(() => import("@/components/NoteEditor"), {
@@ -86,13 +92,13 @@ export default function NotePageClient({ initialNote, id }: Props) {
           )}
 
           {saving && (
-            <p className="absolute right-0 -bottom-5 text-xs text-default-500 animate-pulse">
+            <Chip className="absolute right-0 top-12 opacity-20 animate-pulse">
               Guardando...
-            </p>
+            </Chip>
           )}
         </div>
 
-        <section className="w-full min-h-[70vh] py-6">
+        <section className="w-full min-h-[70vh] py-3">
           <NoteEditor
             note={note}
             onSave={handleSave}

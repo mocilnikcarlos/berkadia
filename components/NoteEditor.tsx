@@ -7,7 +7,18 @@ import { useBlocks } from "@/hooks/editor/useBlocks";
 import { useImageInsertion } from "@/hooks/editor/useImageInsertion";
 import { useSelectionToolbar } from "@/hooks/editor/useSelectionToolbar";
 import { useEditorUser } from "@/hooks/editor/useEditorUser";
-import { AnimatePresence } from "framer-motion";
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 
 interface Props {
   note: NoteRow;
@@ -40,33 +51,50 @@ export default function NoteEditor({ note, onSave, setTooltip }: Props) {
   // ---- Hook: toolbar de selección ----
   const { showToolbar, toolbarPos } = useSelectionToolbar();
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  function handleDragEnd(event: any) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = blocks.findIndex((b) => b.id === active.id);
+    const newIndex = blocks.findIndex((b) => b.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    setBlocks(arrayMove(blocks, oldIndex, newIndex));
+  }
+
   return (
-    <>
-      {blocks.map((block, index) => {
-        const isLast = index === blocks.length - 1;
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext
+        items={blocks.map((b) => b.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        {blocks.map((block, index) => {
+          const isLast = index === blocks.length - 1;
+          const isPlaceholder =
+            isLast &&
+            block.type === "text" &&
+            (block.data as any).html.trim() === "";
 
-        const isPlaceholder =
-          isLast &&
-          block.type === "text" &&
-          (block.data as any).html.trim() === "";
-
-        return (
-          <BlockRenderer
-            key={block.id}
-            block={block}
-            onChange={handleBlockChange}
-            onDelete={handleDeleteBlock}
-            setTooltip={setTooltip}
-            isPlaceholder={isPlaceholder}
-          />
-        );
-      })}
-
-      <FloatingToolbar
-        visible={showToolbar}
-        x={toolbarPos.x}
-        y={toolbarPos.y}
-      />
-    </>
+          return (
+            <BlockRenderer
+              key={block.id}
+              block={block}
+              onChange={handleBlockChange}
+              onDelete={handleDeleteBlock}
+              setTooltip={setTooltip}
+              isPlaceholder={isPlaceholder}
+            />
+          );
+        })}
+      </SortableContext>
+    </DndContext>
   );
 }

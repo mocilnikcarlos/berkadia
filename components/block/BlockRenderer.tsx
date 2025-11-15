@@ -45,7 +45,11 @@ export default function BlockRenderer({
     // 🖼 Bloque de imagen (placeholder futuro)
     case "image":
       return (
-        <BlockWrapper id={block.id} onDelete={onDelete}>
+        <BlockWrapper
+          id={block.id}
+          isPlaceholder={isPlaceholder}
+          onDelete={onDelete}
+        >
           <ImageBlock block={block} onChange={onChange} onDelete={onDelete} />
         </BlockWrapper>
       );

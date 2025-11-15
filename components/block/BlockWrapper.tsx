@@ -1,7 +1,8 @@
-// /components/block/BlockWrapper.tsx
 "use client";
 
 import React, { useState } from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import BlockMenu from "../ui/BlockMenu";
 import { GripVertical, Plus } from "lucide-react";
 
@@ -21,23 +22,40 @@ export default function BlockWrapper({
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // 👉 dnd-kit acá
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
   const handleDelete = () => {
-    setIsDeleting(true); // 👈 activa fade-out
-    setTimeout(() => onDelete(id), 180); // 👈 elimina después de animar
+    setIsDeleting(true);
+    setTimeout(() => onDelete(id), 180);
   };
 
   return (
     <div
+      ref={setNodeRef}
+      style={style}
       data-block-id={id}
+      data-block-wrapper
       className={`
-        relative w-full flex gap-2 items-start group rounded-2xl
-        transition-all duration-150 ease-out
+        relative w-full flex gap-2 items-start group
+        transition-all duration-150 rounded-2xl
         ${menuOpen ? "bg-[rgba(255,255,255,0.02)]" : "hover:bg-[rgba(255,255,255,0.02)]"}
         ${isDeleting ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}
+        ${isDragging ? "opacity-50" : ""}
       `}
-      style={{
-        transitionProperty: "opacity, transform",
-      }}
     >
       {/* IZQUIERDA: + y drag */}
       <div
@@ -51,7 +69,13 @@ export default function BlockWrapper({
           <Plus size={16} />
         </button>
 
-        <button className="text-gray-500 hover:text-white cursor-grab">
+        {/* 👉 drag handle real */}
+        <button
+          ref={setActivatorNodeRef}
+          {...listeners}
+          {...attributes}
+          className="text-gray-500 hover:text-white cursor-grab"
+        >
           <GripVertical size={16} />
         </button>
       </div>

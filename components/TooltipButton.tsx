@@ -52,7 +52,7 @@ export default function TooltipButton({ tooltip, onCopy, setTooltip }: Props) {
       className="fixed z-50 transition-transform duration-200"
       style={{
         top: tooltip.y - 8,
-        left: tooltip.x,
+        right: tooltip.x - 100,
         transform: "translateX(-50%)",
       }}
     >
@@ -78,8 +78,7 @@ export default function TooltipButton({ tooltip, onCopy, setTooltip }: Props) {
         ) : (
           <Copy size={14} className="text-white" />
         )}
-
-        {copied ? "Copiado" : "Copiar bloque"}
+        {copied ? "Copiado" : "Copiar texto"}
       </button>
     </div>
   );
